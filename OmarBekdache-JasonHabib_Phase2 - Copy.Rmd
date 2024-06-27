@@ -1,0 +1,672 @@
+---
+title: "OmarBekdache-JasonHabib_Phase2"
+author: "Omar Bekdache and Jason Habib"
+date: "2023-11-08"
+output: word_document
+---
+
+#INTRODUCTION
+The dataset we're using focuses on predicting customer churn, a critical metric in business that refers to the phenomenon where customers discontinue their relationship with a company. In this context, churn represents customers who stop using a service or product.Our model aims to predict churn by leveraging various predictors or features. These predictors might include Age,Gender,Number of dependants,marital status ans much more.By accurately predicting churn, our model offers businesses valuable insights, allowing them to take targeted actions such as offering incentives, improving service quality, or implementing retention strategies to retain customers and sustain business growth.
+#VARIABLE MEANING
+Predictors
+Num_Dep: Number of Dependents
+Num_Referrals: Number of Referrals
+Tenure: The time for which a customer has been using the service (in months). 
+Multiple Lines:Whether a customer has multiple lines of internet connectivity.
+Internet Service:Whether the customer is subscribed to internet
+Avg_GB_D: Average monthly downloads
+Streaming_Movies:Whether a customer has an option of movie streaming
+Streaming_TV:Whether a customer has an option of TV streaming.
+Streaming_Music:Whether a customer has an option of music streaming
+Unlimited Data:whether ta customer has unlimited data option.
+Monthly_Charge:How much the customer is charged every month.
+Total_Charges:How much the customer has been charged till now.
+Total_Refunds:How much a customer has been refunded.
+Customer_Status: whether a customer has churned or not.
+
+```{r, fig.width=20, fig.height=5}
+library(ggplot2)
+library(leaps)
+library(MASS)
+library(dplyr)
+
+setwd("/Users/jason/Documents/Data Science/")
+df <- read.csv("Service_Provider_Churn.csv")
+dim(df)
+```
+
+
+```{r, fig.width=20, fig.height=5}
+
+#Distribution of Predictors
+
+ggplot(df, aes(x = Age)) +
+  geom_histogram(binwidth = 2, fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Age Distribution", x = "Age", y = "Frequency") +
+  theme_minimal()
+
+ggplot(df, aes(x = Total_Charges)) +
+  geom_histogram(binwidth = 10, fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "Total Charges Distribution", x = "Charge", y = "Frequency") +
+  theme_minimal()
+ggplot(df, aes(x = Total_Revenue)) +
+  geom_histogram(binwidth = 10, fill = "lightblue", color = "black", alpha = 3) +
+  labs(title = "Total Revenue Distribution", x = "Revenue", y = "Frequency") +
+  theme_minimal()
+
+ggplot(df, aes(x = Avg_GB_D)) +
+  geom_histogram(binwidth = 3, fill = "lightblue", color = "black", alpha = 3) +
+  labs(title = "Average GB Data Distribution", x = "GB", y = "Frequency") +
+  theme_minimal()
+
+ggplot(df, aes(x = Tenure)) +
+  geom_histogram(binwidth = 3, fill = "lightblue", color = "black", alpha = 3) +
+  labs(title = "Tenure Distribution ", x = "Tenure", y = "Frequency") +
+  theme_minimal()
+
+
+```
+#Analysation of Distributions:
+Age Distribution: Is showing us that our customer's ages are distributed fairly well and the bulk of our customers are under 60.
+
+Total Charges Distribution: which corresponds to number of customers we have for each total charge, is showing us that most of our customers are have accumulated total charges that are generally low, approximately between 2500 and 0.
+
+Total Revenue Distribution: The graph shown generated looks very similar to the total charges distribution, which ultimately makes sensem the correlation between the two will be explored later.
+
+Average GB data Distribution: Shows that most of our customers have average GB consumptions between 0 and 35 monthly.
+
+Tenure Distribution: Is showing us that we have tenure lengths of various sizes, we have a considerable amount that have high tenure lengths(months) as well short tenures. The majority tend to fall at the extremes
+
+
+```{r, fig.width=20, fig.height=5}
+
+#Box Plots
+
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(y = Internet_Type,x = Avg_GB_D))+
+  coord_flip()+
+  labs(title = "average gb vs Internet Type ") 
+
+
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(y = Customer_Status,x = Avg_GB_D))+
+  coord_flip()+
+  labs(title = "Average GB  vs Status ")
+
+
+
+library(tidyverse)
+
+# Extract the counts for each streaming option
+counts <- df %>%
+  summarise(
+    streaming_TV = sum(Streaming_TV == "Yes"),
+    streaming_movies = sum(Streaming_Movies == "Yes"),
+    streaming_music = sum(Streaming_Music == "Yes")
+  )
+
+
+count_streaming_TV <- table(df$Streaming_TV)
+# Create a pie chart
+pie(count_streaming_TV, labels = paste(names(count_streaming_TV), ": ", round(prop.table(count_streaming_TV) * 100, 2), "%"), 
+    main = "Pie Chart of Streaming TV Options", col = c("skyblue", "lightgreen", "lightcoral"))
+
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(y = Unlimited_Data,x = Tenure))+
+  coord_flip()+
+  labs(title = "Tenure vs Unlimited Data ")
+
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(y = Customer_Status,x = Tenure))+
+  coord_flip()+
+  labs(title = "Tenure vs Customer Status ")
+
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(y = Streaming_Movies,x = Avg_GB_D))+
+  coord_flip()+
+  labs(title = "Average GB consumption  vs Streaming movies")
+
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(y = Streaming_Music,x = Avg_GB_D))+
+  coord_flip()+
+  labs(title = "Average GB consumption  vs Streaming Music")
+
+```
+#Analysation of box plots
+Average GB vs Internet type: This box plot shows us the relationship between the type of internet service they use and how much GBs they are consuming, looking at the plot we see that the boxes are quite similar indicating that the type of internet service you use does not really affect how much GBs you consume.however cable users did show to have the highest average.
+
+Average GB vs Status: the box plot shows that on average, customers who churned and customers who stayed did use the same amount of GBs which is close to 20.However, The median for people who churned is slightly higher. This can be attributed to the fact that people who churned used more GBs, raising their cost, leading them to churn.
+
+Pie Chart: Shows the distribution of customers who are streaming TV, about 40% of our customers stream TV.
+
+Tenure vs Unlimited Data: I plotted this hoping that i would see that customers who opted for unlimited data had shorter tenures, the reason being that they used their unlimited data for a certain task. The plot however, shows that it is not the case and having unlimited data did not affect tenure.
+
+Tenure vs Customer Status: This plot showed that customers who churned had a significantly lower tenure duration(around 10) indicating that customers who churned did so early on in their subscription, except for a few outliers who churned after being subscribed  for a long time.
+
+Average Gb vs Streaming Movies: customers who streamed movies did not have a significant difference between customers who didn’t, indicating that streaming movies did not have a big impact on GB consumption. This might be attributed to the fact that customers who didn’t stream movies used their GBs somewhere e else.
+
+Average GB vs Streaming Music: This plot showed that although not very significantly, customers who streamed music had on average lower GBs consumed. A reason for this might be because streaming music generally does not use a lot  of GBs realtive to other streaming options.
+
+
+```{r}
+#Density Plots
+
+df %>% 
+  ggplot()+
+  geom_density(aes(Tenure,fill = Customer_Status, alpha = 10))+
+  labs(title = "Customer Status  vs Tenure")
+
+df %>% 
+  ggplot()+
+  geom_density(aes(Monthly_Charge,fill = Customer_Status , alpha = 10))+
+  labs(title = "Customer Status  vs Monthly Charge")
+
+df %>% 
+  ggplot()+
+  geom_density(aes(Monthly_Charge,fill = Multiple_Lines , alpha = 10))+
+  labs(title = "Multiple Lines  vs Monthly Charge")
+
+```
+#analysation of density plots
+
+Density of Customer Status vs Tenure: The density function showed us for lower values of tenure, there is a higher probability of a customer churning,until a certain threshold is crossed(18) they are more probable to stay.
+
+Customer Status vs Monthly charge: For higher values of monthly charge, approximately 70 to 100,customers are more likely to churn. HIgh cost may cause customers to churn ofcourse.
+
+Multiple lines vs Monthly Charge: For higher monthly chargers, there is a higher probability that a customer is using multiple lines.
+
+```{r}
+
+#Scatter Plots
+
+#Tenure vs Total Charges
+ggplot(data = df) +
+  geom_point(mapping = aes(y = Total_Charges,x = Tenure, color = Customer_Status))+
+  labs(title = "Total Charges vs Tenure")
+
+
+ggplot(data = df) +
+  geom_point(mapping = aes(y = Age,x = Total_Revenue))+
+  coord_flip()+
+  labs(title = "Total Revenue  vs Age")
+
+
+ggplot(data = df) +
+  geom_point(mapping = aes(y = Monthly_Charge,x = Tenure, color = Customer_Status))+
+  labs(title = "Tenure  vs Monthly Charge")
+
+ggplot(data = df) +
+  geom_point(mapping = aes(y = Monthly_Charge,x = Avg_GB_D))+
+  coord_flip()+
+  labs(title = "Avg GB Consumption  vs Monthly Charge")
+
+ggplot(data = df) +
+  geom_point(mapping = aes(y = Avg_GB_D ,x = Age))+
+  labs(title = "Age  vs Average GB Consumption ")
+
+
+```
+#Scatter plots Analysations
+
+Total Charges vs Tenure: As tenure increases, Total charges increases. That is because the monthly charges accumulate.
+
+Total Revenue vs Age: We expected to see a relationship between total charges and the hypothesis was that older people would yield more revenue, it looks like that is not the case.
+
+Monthly_Charge vs Tenure: We expected to see lower tenures for higher monthly charges, they seem to be distributed evenly, however the coloring based on the customers status showed us that most churners had a high monthly cahrge.
+
+Avg Gb vs Monthly charge: The higher the Avg GB consumption the higher the monhtly charge, generally.
+
+Avg GB vs Age: This one plot was very interesting. It showed us that customers aged 20 to 30 had the highest gb consumption. Showing us that younger people consume more data which makes sense.
+```{r}
+#Correlation Tests
+
+cor.test(df$Avg_GB_D,df$Total_Revenue)
+
+cor.test(df$Avg_GB_D,df$Age)
+
+cor.test(df$Age,df$Tenure)
+
+cor.test(df$Monthly_Charge,df$Age)
+
+cor.test(df$Num_Dep,df$Monthly_Charge)
+
+#cor test for all predicors table
+cor(df[, -c(1,3,7,8,9,10,12,13,14,15,16,21,22)])
+
+```
+
+#Correlation Analysis
+
+Correlation between Avg GB and total revenue: The analysis reveals strong and statistically significant correlations. Between Avg_GB_D and Total_Revenue, a positive correlation (r = 0.17) indicates a relationship suggesting higher data usage is associated with increased revenue.
+
+Correlation between AVG_GB and Age: a negative correlation (r = -0.39) between Avg_GB_D and Age suggests that as data usage increases, age tends to decrease, highlighting a potential trend among younger users consuming more data.
+
+Correlation between Age and Tenure:
+Pearson's correlation coefficient shows a very weak negative correlation between Age and Tenure (correlation coefficient: -0.00957, p-value: 0.4371). This suggests a minimal linear relationship between these variables.
+
+Correlation between Monthly Charge and Age:
+A moderate positive correlation exists between Monthly Charge and Age (correlation coefficient: 0.124, p-value: < 2.2e-16). This implies that as Age increases, Monthly Charge tends to increase as well, but the relationship isn't extremely strong.
+
+Correlation between Num_Dep and Monthly Charge:
+There's a moderate negative correlation between Num_Dep (Number of Dependents) and Monthly Charge (correlation coefficient: -0.136, p-value: < 2.2e-16). This suggests that as the number of dependents increases, the Monthly Charge tends to decrease, though the relationship is not absolute.
+
+#matrix
+doing the correlation for all numerical attributes shows us all the correlations. We note that some predictors are highly correlated. some examples include total revenue and total charges with a correlation of approximately 0.8. Another extremely high correlation between two attributs is tenure with total charges and total revenue. This makes sense since the longer you stay subscribed the higher the total revenue and total charges accumulate.
+
+```{r}
+#Pair Plots
+
+pairs(~ Avg_GB_D + Age, df)
+
+pairs(~ Total_Charges + Tenure, df)
+
+```
+
+```{r}
+#Correlation Tests for non-numerical predictors
+#we use chi-squared-tests
+streaming_tv_vs_unlimited_data <- table(df$Streaming_TV, df$Unlimited_Data)
+
+chi_square_test <- chisq.test(streaming_tv_vs_unlimited_data)
+
+
+print(chi_square_test)
+
+####
+Married_vs_MultipleLines <- table(df$Married, df$Multiple_Lines)
+
+
+chi_square_test <- chisq.test(Married_vs_MultipleLines)
+
+print(chi_square_test)
+
+```
+#analysing results of chi squared
+Streaming TV vs. Unlimited Data:
+Strongly significant result (X-squared = 6590.3, df = 4, p-value < 2.2e-16), showing a robust association between streaming TV and unlimited data usage.
+Married vs. Multiple Lines:
+Significant result (X-squared = 102.05, df = 2, p-value < 2.2e-16) suggesting a link between marital status and having multiple phone lines.All of the results also yielded low p values suggesting that did not happen by chance.
+
+
+```{r}
+
+str(df)
+```
+
+
+```{r}
+#Encoding our features
+
+#dim(df)
+#str(df)
+#levels(df$Customer_Status)
+#unique(df$Customer_Status)
+
+df$Customer_Status <- as.factor(df$Customer_Status)
+df$Customer_Status <- as.factor(ifelse(df$Customer_Status == "Stayed", 1, 0))
+
+df$Gender <- as.factor(df$Gender)
+df$Gender<- as.factor(ifelse(df$Gender == "Male", 1, 0))
+
+df$Married <- as.factor(df$Married )
+df$Married <- as.factor(ifelse(df$Married  == "Yes", 1, 0))
+
+df$Phone_Service <- as.factor(df$Phone_Service )
+df$Phone_Service <- as.factor(ifelse(df$Phone_Service  == "Yes", 1, 0))
+
+df$Multiple_Lines <- as.factor(df$Multiple_Lines )
+df$Multiple_Lines <- as.factor(ifelse(df$Multiple_Lines  == "Yes", 1, 0))
+
+df$Internet.Service <- as.factor(df$Internet.Service )
+df$Internet.Service <- as.factor(ifelse(df$Internet.Service  == "Yes", 1, 0))
+
+df$Streaming_TV <- as.factor(df$Streaming_TV )
+df$Streaming_TV <- as.factor(ifelse(df$Streaming_TV  == "Yes", 1, 0))
+
+df$Streaming_Movies <- as.factor(df$Streaming_Movies )
+df$Streaming_Movies <- as.factor(ifelse(df$Streaming_Movies  == "Yes", 1, 0))
+
+
+df$Streaming_Music <- as.factor(df$Streaming_Music )
+df$Streaming_Music <- as.factor(ifelse(df$Streaming_Music  == "Yes", 1, 0))
+
+
+df$Unlimited_Data <- as.factor(df$Unlimited_Data )
+df$Unlimited_Data <- as.factor(ifelse(df$Unlimited_Data  == "Yes", 1, 0))
+
+
+str(df)
+
+#levels(df$Multiple_Lines)
+#df
+```
+
+
+```{r}
+#2 Check for missing values
+sum(is.na(df$Customer_Status)) #returned 0 therefore I have no missing values in my column
+
+#Function to calculate the performance metrics of LDA
+measure = function(confmatrix){
+  sensitivity = confmatrix[2,2] / (confmatrix[1,2] + confmatrix[2,2])
+  specificity = confmatrix[1,1] / (confmatrix[1,1] + confmatrix[2,1])
+  accuracy = sum(diag(confmatrix)) / sum(confmatrix)
+  return (c(se = sensitivity, sp = specificity, acc = accuracy))
+}
+
+```
+
+
+```{r}
+#Best Subset Selection
+regfit.full <- regsubsets(Customer_Status ~ ., data = df, nvmax = ncol(df)-1)
+
+#Forward Selection
+regfit.fwd <- regsubsets(Customer_Status~., data = df, nvmax= ncol(df)-1 , method = "forward")
+
+#Backward Selection
+regfit.bwd <- regsubsets(Customer_Status~., data = df, nvmax= ncol(df)-1 , method = "backward")
+```
+
+
+```{r}
+coef(regfit.full, 13)
+##
+coef(regfit.full, 3)
+coef(regfit.full,6)
+coef(regfit.full, 9)
+```
+ After running the algorithm for different subset numbers(3 predictors,6 predictors,9 predictors) we notice that the algorithm is always including tenure, number of referrals, and INternet Type of fiber optic. This might be an indicator that these 3 predictors are very important for our predictions because they are being included in every subset.
+
+```{r}
+#Using Best Subset Selection
+
+reg.summary.full = summary(regfit.full)
+
+par (mfrow = c(2 , 2) )
+which.min(reg.summary.full$rss)
+which.max(reg.summary.full$adjr2)
+which.min(reg.summary.full$bic)
+which.min(reg.summary.full$cp)
+
+
+plot ( reg.summary.full$rss, xlab = " Number of Variables ", ylab = " RSS ", type = "l")
+points(21, reg.summary.full$rss[21], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.full$adjr2 , xlab = " Number of Variables ",ylab = " Adjusted RSq ", type = "l")
+points(17, reg.summary.full$adjr2[17], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.full$bic , xlab = " Number of Variables ",ylab = "BIC", type = "l")
+points(13, reg.summary.full$bic[13], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.full$cp , xlab = " Number of Variables ",ylab = " Cp ", type = "l")
+points(15, reg.summary.full$cp[15], col = "red", cex = 2, pch = 20)
+
+```
+If we consider the criteria for lowest RSS, the model with the subset of predictors is going to consist of all the predictors since RSS decreases as we increase the number of predictors.
+If we consider the criteria for the highest adjusted r-squared, the best subset of predictors is the model with the 17 predictors.
+If we consider the criteria for the lowest BIC, then the best subset of predictors is the model with 13 predictors.
+If we consider the criteria for the lowest CP, then the best subset of predictors is the model with 15 predictors.
+The reason for the change in the subset of predictors when using different criteria lies in the trade-off between model complexity and goodness of fit. When having different criteria the emphasis on aspects of model performance will be different and usually penalties are applied to  models with more predictors. 
+RSS criteria looks at minimizing the residuals thus will favor the model with the most variables.
+Adjusted r-squared criteria penalizes the model for the number of predictors, favoring simpler models. It seeks a balance between model fit and complexity. Thus if we look at the model with 17 predictors, the algorithm would have not selected it if its improvment in fitting the values is not substantial enough compared to its added complexity.
+CP criteria looks at seeking a balance between model fit and prediction error. It penalizes models for both underfitting and overfitting, favoring a moderate number of predictors.
+BIC criteria behaves similarly as CP but the penalty term differs where BIC has log(n) instead of 2. They will both look at penalizing models with higher number of predictors and have small values when the test error is low. 
+```{r}
+#Using Forward Selection
+reg.summary.fwd = summary(regfit.fwd)
+
+
+par (mfrow = c(2 , 2) )
+which.min(reg.summary.fwd$rss)
+which.max(reg.summary.fwd$adjr2)
+which.min(reg.summary.fwd$bic)
+which.min(reg.summary.fwd$cp)
+
+
+plot ( reg.summary.fwd$rss, xlab = " Number of Variables ", ylab = " RSS ", type = "l")
+points(21, reg.summary.fwd$rss[21], col = "blue", cex = 2, pch = 20)
+
+plot ( reg.summary.fwd$adjr2 , xlab = " Number of Variables ",ylab = " Adjusted RSq ", type = "l")
+points(17, reg.summary.fwd$adjr2[17], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.fwd$bic , xlab = " Number of Variables ",ylab = "BIC", type = "l")
+points(13, reg.summary.fwd$bic[13], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.fwd$cp , xlab = " Number of Variables ",ylab = " Cp ", type = "l")
+points(15, reg.summary.fwd$cp[15], col = "red", cex = 2, pch = 20)
+
+```
+
+
+```{r}
+#Using Backward Selection
+reg.summary.bwd = summary(regfit.bwd)
+
+
+par (mfrow = c(2 , 2) )
+which.min(reg.summary.bwd$rss)
+which.max(reg.summary.bwd$adjr2)
+which.min(reg.summary.bwd$bic)
+which.min(reg.summary.bwd$cp)
+
+
+plot ( reg.summary.bwd$rss, xlab = " Number of Variables ", ylab = " RSS ", type = "l")
+points(21, reg.summary.bwd$rss[21], col = "blue", cex = 2, pch = 20)
+
+plot ( reg.summary.bwd$adjr2 , xlab = " Number of Variables ",ylab = " Adjusted RSq ", type = "l")
+points(17, reg.summary.bwd$adjr2[17], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.bwd$bic , xlab = " Number of Variables ",ylab = "BIC", type = "l")
+points(13, reg.summary.bwd$bic[13], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.bwd$cp , xlab = " Number of Variables ",ylab = " Cp ", type = "l")
+points(15, reg.summary.bwd$cp[15], col = "red", cex = 2, pch = 20)
+
+```
+
+
+```{r}
+
+
+#Best Subset Selection by Validation-Set Approach and Cross-Validation
+
+
+set.seed(1)
+train <- sample(c(TRUE,FALSE),nrow(df),replace = TRUE) #splitting our data into two parts, testing data and training data. 
+test <- (!train)
+
+regfit.best <- regsubsets(Customer_Status~.,data = df[train, ],nvmax = 21) 
+
+test.mat <- model.matrix(Customer_Status~.,data = df[test, ])
+
+val.errors <- rep(NA,21) #vector of size p to store error of each subset
+
+df$Customer_Status <- as.numeric(df$Customer_Status)
+
+
+for(i in 1:21){ #looping to get coefficients of each subset to compute the error and store in val.errors
+  coeficient <- coef(regfit.best, id =i) #extracting the coefficients of each subset 
+  pred <- test.mat[,names(coeficient)] %*% coeficient #performing matrix multiplication on the coefficients to get the predicted value of our outcome
+  
+  val.errors[i] <- mean((df$Customer_Status[test] - pred)^2) #computing the mean squared error
+}
+
+min_validation_error <- which.min(val.errors)
+summary(regfit.best)
+#coef(regfit.best,2)
+
+class(df$Customer_Status)
+```
+Using the validation-set approach we split our data into Test data and Train data. We used the Training data in order to choose the best subset of predictors at each stage (number of predictors). Then we computed the coefficients of the predictors of all p models using the Testing data, this will provide more accurate estimates of the coefficients which will subsequently provide a better estimate for the validation error of each subset. Using the coefficients and the model.matrix function we predicted values of our outcome for each subset. Looking at the lowest validation error of all subsets we notice that it was for subset 20 This means that the 20 chosen predictors when comparing models with 20 predictors are most suitable to use. 
+
+Looking at the lowest validation-test error is similar to looking at the RSS criteria, we want the set of predictors that lead to the lowest residuals. Therefore this method pointed out that the full set of predictors should be included to minimize the validation-test error. Note that testing was only done once, thus when performing this algorithm multiple times on different testing data different validation-test errors would be achieved and then the most accurate estimate of the error would be the average of the errors. Then another subset of predictors might be chosen.
+
+We will use the results of the Best Subset Selection
+We will compare the results of two criteria: CP criteria and BIC criteria
+First we will take the subset of predictors that led to the lowest CP, and use them to generate LDA, QDA, and Logistic Regression model.
+Then we will take the subset of predictors that led to the lowest BIC, and use them to generate LDA, QDA, and Logistic Regression model.
+
+```{r}
+#Creating different splits using the cross-validation re-sampling technique 
+
+df <- df %>% mutate(id = row_number())
+num_splits <- 30
+split_list <- vector("list", length = num_splits) # This is a list that stores the splits
+for (i in 1:num_splits) {               # This loop creates a test train split and places each one in the split_list vector
+  tr <- df %>% slice_sample(prop = 0.65)
+  te <- anti_join(df, tr, by = 'id')
+  #tr <- tr %>% select(-id)
+  #te <- te %>% select(-id)
+  split_list[[i]] <- list(train = tr, test = te) #this line stores each train test split as a list inside vector split_list
+ 
+lda.mod <- lda(Customer_Status ~ Age + Married + Num_Dep + Num_Referral + Tenure + Phone_Service + Multiple_Lines + Internet.Service + Streaming_TV + Streaming_Music + Monthly_Charge + Total_Charges + Total_Refunds ,data = split_list[[i]]$train) #LDA on training data
+   
+   
+  lda.mod.pred <- predict(lda.mod, newdata = split_list[[i]]$test) #LDA on testing data
+  
+  
+  
+  conf <- table(lda.mod.pred$class, split_list[[i]]$test$Customer_Status) #Generating a confusion matrix
+  cat("Confusion Matrix for Split", i, ":\n")
+  # Using the measure function
+  perf <- measure(conf)
+  print(conf)
+  cat("Sensitivity:", perf[1], "\n")
+  cat("Specificity:", perf[2], "\n")
+  cat("Accuracy:", perf[3], "\n\n")
+}
+
+
+```
+
+The LDA model consistently demonstrates strong performance in identifying customers who churned across the 30 different splits. the models yielded a sensitivity ranging from 85% to 91%, indicating its effectiveness in capturing true positive cases(stayed).The model also exhibits moderate to good performance in identifying customers who churned (specificity ranging from 61% to 67%). Overall accuracy remains solid, ranging from 80% to 83%. These results suggest that the model is generally reliable in predicting customer churn, striking a balance between correctly identifying both churned and stayed instances. This was of course after we chose our subset of predictors and inserted them in the lda models. To get better estimates we could average the results of sensitivity and specificity of all 30 splits to get the closest estimate to the real world test error, giving us a good idea of our errors.
+
+```{r}
+
+#Varying the threshold value for a SINGLE LDA model to study its effect on the error rate
+
+threshold_values <- seq(0.1, 0.9, by = 0.1) # This is a list that stores the threshold values
+error_rates <- numeric(length(threshold_values))# This is a list that stores the error rates
+
+tr <- df %>% slice_sample(prop = 0.70)
+te <- anti_join(df, tr, by = 'id')
+#tr <- tr %>% select(-id)
+#te <- te %>% select(-id)
+lda.mod <- lda(Customer_Status ~ Age + Married + Num_Dep + Num_Referral + Tenure + Phone_Service + Multiple_Lines + Internet.Service + Streaming_TV + Streaming_Music + Monthly_Charge + Total_Charges + Total_Refunds,data = tr) #LDA on training data
+lda.mod.pred <- predict(lda.mod, newdata =te) #LDA on testing data
+#to loop over all the threshold values to obtain different error rates
+for(i in seq_along(threshold_values)) {
+  
+  threshold_value <- threshold_values[i]
+  
+  predicted_class <- ifelse(lda.mod.pred$posterior[, "1"] > threshold_value , "Churned", "Stayed")
+
+  conf_matrix <- table(predicted_class, te$Customer_Status)
+  
+  error_rates[i] <- 1 - sum(diag(conf_matrix)) / sum(conf_matrix)
+}
+
+#Plotting error rate vs threshold value
+plot(threshold_values, error_rates, type = "b", col = "blue",
+     xlab = "Threshold Values", ylab = "Error Rate",
+     main = "Error Rate vs. Threshold")
+abline(h = min(error_rates), col = "red", lty = 2) # adds a horizontal line at the minimum error rate
+
+```
+We looked at the error rate for our model for different threshold values. This plot shows that taking a threshold value close to 0.5 will yield the lowest error rate. One would vary the threshold value in terms of imposing a stricter threshold. When stricter thresholds are applied, performance matrices differ. In our case, we care more about predicting customers who are going to churn correctly(maybe to give him/her incentives to stay subscribed) rather than correctly predicting customers who are going to stay. It would be ok to classify someone as going to churn and it turns out he stays as opposed to predicting someone to stay who is going to churn. SO changing the threshold accordingly would be a better trade off for us.
+
+#QDA
+```{r}
+#Creating different splits using the cross-validation re-sampling technique 
+
+df <- df %>% mutate(id = row_number())
+num_splits <- 30
+split_list <- vector("list", length = num_splits) # This is a list that stores the splits
+for (i in 1:num_splits) {               # This loop creates a test train split and places each one in the split_list vector
+  tr <- df %>% slice_sample(prop = 0.65)
+  te <- anti_join(df, tr, by = 'id')
+  #tr <- tr %>% select(-id)
+  #te <- te %>% select(-id)
+  split_list[[i]] <- list(train = tr, test = te) #this line stores each train test split as a list inside vector split_list
+ 
+   qda.mod <- qda(Customer_Status ~ Age + Married + Num_Dep + Num_Referral + Tenure + Phone_Service + Multiple_Lines + Internet.Service + Streaming_TV + Streaming_Music + Monthly_Charge + Total_Charges + Total_Refunds ,data = split_list[[i]]$train) #QDA on training data
+   
+   
+  qda.mod.pred <- predict(qda.mod, newdata = split_list[[i]]$test) #QDA on testing data
+  
+  
+  
+  conf <- table(qda.mod.pred$class, split_list[[i]]$test$Customer_Status) #Generating a confusion matrix
+  cat("Confusion Matrix for Split", i, ":\n")
+  # Using the measure function
+  perf <- measure(conf)
+  print(conf)
+  cat("Sensitivity:", perf[1], "\n")
+  cat("Specificity:", perf[2], "\n")
+  cat("Accuracy:", perf[3], "\n\n")
+}
+
+
+```
+Across the 30 different splits, the QDA model consistently showcases robust performance in detecting customers who churned. Sensitivity metrics range impressively from 71.2% to 74.9%, underlining the model's effectiveness in accurately identifying true positive cases, specifically customers who stayed. Moreover, the model demonstrates moderate performance in detecting churned customers, with specificity ranging from 80.3% to 83.7%. This range highlights the model's capability to correctly pinpoint negative cases. The overall accuracy maintains a solid range between 74% and 76.4%, emphasizing the model's correctness in predicting both churned and stayed instances.
+
+
+#QDA VS LDA
+
+The LDA model demonstrates higher sensitivity, ranging between 85% to 91%, implying its effectiveness in accurately capturing customers who stayed. This suggests that the LDA model is particularly adept at identifying true positive cases.However, its specificity ranges between 61% to 67%, indicating moderate performance in correctly identifying churned customers.
+On the other hand, the QDA model shows slightly lower sensitivity metrics, ranging from 71.2% to 74.9%. Although this suggests a lower accuracy in identifying customers who stayed compared to LDA, the QDA model exhibits better specificity, ranging from 80.3% to 83.7%. This implies a stronger capability to accurately pinpoint churned customers.In terms of overall accuracy, the LDA model maintains a solid range of 80% to 83%, while the QDA model's overall accuracy ranges between 74% and 76.4%. The LDA model seems to strike a balance between correctly identifying both churned and stayed instances, while the QDA model leans toward better precision in identifying churned customers but might miss some stayed instances. In our case we would pick the QDA model since we care more about identifying churned customers.
+
+
+```{r}
+
+#Varying the threshold value for a SINGLE QDA model to study its effect on the error rate
+
+threshold_values <- seq(0.1, 0.9, by = 0.1) # This is a list that stores the threshold values
+error_rates <- numeric(length(threshold_values))# This is a list that stores the error rates
+
+tr <- df %>% slice_sample(prop = 0.70)
+te <- anti_join(df, tr, by = 'id')
+#tr <- tr %>% select(-id)
+#te <- te %>% select(-id)
+qda.mod <- qda(Customer_Status ~ Age + Married + Num_Dep + Num_Referral + Tenure + Phone_Service + Multiple_Lines + Internet.Service + Streaming_TV + Streaming_Music + Monthly_Charge + Total_Charges + Total_Refunds,data = tr) #QDA on training data
+qda.mod.pred <- predict(qda.mod, newdata =te) #QDA on testing data
+#to loop over all the threshold values to obtain different error rates
+for(i in seq_along(threshold_values)) {
+  
+  threshold_value <- threshold_values[i]
+  
+  predicted_class <- ifelse(qda.mod.pred$posterior[, "1"] > threshold_value , "Churned", "Stayed")
+
+  conf_matrix <- table(predicted_class, te$Customer_Status)
+  
+  error_rates[i] <- 1 - sum(diag(conf_matrix)) / sum(conf_matrix)
+}
+
+#Plotting error rate vs threshold value
+plot(threshold_values, error_rates, type = "b", col = "blue",
+     xlab = "Threshold Values", ylab = "Error Rate",
+     main = "Error Rate vs. Threshold")
+abline(h = min(error_rates), col = "red", lty = 2) # adds a horizontal line at the minimum error rate
+
+```
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+

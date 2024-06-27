@@ -1,0 +1,461 @@
+---
+title: "Phase1"
+author: "Omar Bekdache - Jason Habib"
+date: "2023-10-19"
+output: pdf_document
+---
+Introduction:
+
+The English Premier League (EPL) is a well-known and highly popular football league worldwide, with a diverse and dedicated fan base. Established in 1992, it has a long history and features top football talent from around the globe. The league consists of 20 top-tier football clubs, all competing intensely throughout the season. These clubs not only represent English cities but also have fans from all over the world, with matches reaching millions of viewers internationally.
+
+The main goal of our data science project is to analyze the statistics of the English Premier League, focusing on the key attributes and performance metrics of each team in recent seasons. We will utilize data from reliable sources such as "http://data.world.com/" and "https://www.transfermarkt.com/premier-league/erfolge/wettbewerb/GB1" to provide a comprehensive and data-driven view of the league's dynamics.
+
+Sources:
+
+Data from "http://data.world.com/"
+Data from "https://www.transfermarkt.com/premier-league/erfolge/wettbewerb/GB1"
+
+Attribute:
+
+1. *Rank:* This represents the current ranking of a team in the league based on their performance. Lower ranks indicate a better standing.
+
+2. *Matches Played:* This shows the total number of matches a team has participated in during the season.
+
+3. *Wins:* The number of games a team has won during the season, indicating their success.
+
+4. *Draws:* The count of matches that ended in a draw, showcasing a team's ability to secure points even when they don't win.
+
+5. *Losses:* This attribute displays the number of matches a team has lost, highlighting their struggles in the season.
+
+6. *GD (Goal Difference):* Goal difference is the variance between the number of goals scored (GF) and the number of goals conceded (GA). A positive GD indicates a team scoring more goals than they concede, while a negative                             GD signifies the opposite.
+
+7. *Points:* Points are awarded to teams based on their match results (win = 3 points, draw = 1 point, loss = 0 points). This attribute reflects a team's position in the league table.
+
+8. *Qualification:* Qualification status indicates if a team has secured a spot in prestigious competitions like the UEFA Champions League or the UEFA Europa League.
+
+9. *Average Age:* This represents the mean age of the players in the team, offering insights into the squad's experience and youthfulness.
+
+10. *Average Attendance:* Average attendance denotes the number of spectators attending the team's home matches on average, highlighting their fan following.
+
+11. *GF (Goals For):* Goals scored by the team during the season, indicating their offensive prowess.
+
+12. *GA (Goals Against):* Goals conceded by the team during the season, reflecting their defensive performance.
+
+```{r}
+
+library(tidyverse)
+library(ggplot2)
+library(markdown)
+library(gridExtra)
+library(car)
+library(knitr)
+library(rmarkdown)
+
+```
+
+```{r}
+
+#Knitting the document
+render("OmarBekdache-JasonHabib_Phase1.Rmd", output_format = "pdf_document")
+
+
+setwd("C:/Users/Omar/Desktop")
+df <- read.csv("PL_Standings.csv")
+
+```
+
+```{r}
+unique(df$Team)
+```
+Throughout the 30 Premier League seasons there has been 50 teams that have featured in the competition. 
+``` {r}
+team_goals <- select(df,Season_End_Year,Team,GF,GA,Rank)
+view(team_goals)
+top_ranked_team_goals <- filter(team_goals,team_goals$Rank == "1" | team_goals$Rank == "2" |team_goals$Rank == "3" |team_goals$Rank == "4" )
+
+minimum_goals_scored <- min(top_ranked_team_goals$GF)
+maximum_goals_scored <- max(top_ranked_team_goals$GF)
+minimum_goals_conceded <- min(top_ranked_team_goals$GA)
+maximum_goals_conceded <- max(top_ranked_team_goals$GA )
+
+view(top_ranks_goals)
+```
+Above is the minimum and maximum goals scored and conceded by teams ranked 1-4
+
+``` {r}
+df$Rank <- as.factor(df$Rank)
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(x = Rank, y = W))
+```
+Above is a box-plot of the rank of a team vs how many wins per season.We notice that as the rank of the team increases the number of wins increases as well. This is logical because the wins of a team ultimately indicate the rank of a team. Some outliers exist, but they are considered logical as well because during some seasons you can have a certain ranked team achieving more wins than usual but still be considered as a low rank because other higher ranks have achieved even more wins.
+``` {r}
+ggplot(data = df) +
+  geom_point(mapping = aes(x = GF , y = W))
+
+ggplot(data = df) +
+  geom_point(mapping = aes(x = GF, y = W, color = Rank))
+
+``` 
+``` {r}
+df$Rank <- as.factor(df$Change_of_Manager)
+ggplot(data = df) +
+  geom_boxplot(mapping = aes(x = Change_of_Manager, y = W))
+
+```
+This is a box-plot that shows how the change of manager affects the number of wins of a team. On average, the teams who didn't change managers had higher values for wins than the teams that changed. For teams who have changed manages, there are some outliers and this is attributed to the fact that some managers have an immediate positive impact on the team due to their high level of experience and ball knowledge. However, it is more common for a team to struggle to get wins once they change their manager. 
+
+``` {r}
+df$Qualification <- as.factor(df$Qualification)
+ggplot(data = df) +
+  geom_bar(mapping = aes(x = Qualification,  fill = Qualification))
+
+```
+This is a bar graph that shows the number of teams that qualify to each European competition based on their rank at the end of the season. Mid Table teams are teams that have not qualified to any competition but remain in the Premier League for next season. Relegated teams are teams that finished last in the league and thus are demoted to the lower division. As shown by the count, most of the teams finish Mid Table and that is due to the limited spots for qualifying to some European competition. Only a fraction of the teams make it to the Champions League and only a fraction of teams have been relegated. This can indicate how on average there are teams that perform very well and teams that perform very poorly.The Europa COnference League is a fairly new competition that is why only very few teams have participated.
+``` {r,fig.width=20, fig.height=5}
+  
+library(dplyr)
+
+#new_df <- df %>%
+#  group_by(Team) %>%
+#  mutate(ID = group_indices())
+#distinct_teams <- new_df %>% distinct(Team, .keep_all = TRUE)
+
+#There are 50 unique values for the "Team" feature therefore we decided to create 5 different data frames filtered by each 10 unique values.
+
+values_to_filter <- c("Arsenal","Aston Villa","Blackburn","Chelsea","Coventry City","Crystal Palace","Everton","Ipswich Town","Leeds United","Liverpool")
+# This creates a new data frame with rows that match any of the specified values above
+filtered_df1 <- df %>%
+  filter(Team %in% values_to_filter)
+
+view(filtered_df1)
+
+values_to_filter <- c("Manchester City","Manchester Utd","Middlesbrough","Norwich City","Nott'ham Forest","Oldham Athletic","QPR","Sheffield Utd","Sheffield Weds","Southampton")
+filtered_df2 <- df %>%
+  filter(Team %in% values_to_filter)
+
+values_to_filter <- c("Tottenham","Wimbledon","Newcastle Utd","Swindon Town","West Ham","Leicester City","Bolton","Derby County","Sunderland","Barnsley")
+filtered_df3 <- df %>%
+  filter(Team %in% values_to_filter)
+
+values_to_filter <- c("Charlton Ath","Bradford City","Watford","Fulham","Birmingham City","West Brom","Portsmouth","Wolves","Wigan Athletic","Reading")
+filtered_df4 <- df %>%
+   filter(Team %in% values_to_filter)
+
+
+values_to_filter <- c("Hull City","Stoke City","Burnley","Blackpool","Swansea City","Cardiff City","Bournemouth","Brighton","Huddersfield","Brentford" )
+filtered_df5 <- df %>%
+  filter(Team %in% values_to_filter)
+
+#These are sperate box plots for each filtered data frame(for clearer visualization of the box plot
+)
+ggplot(filtered_df1, aes(x = Team, fill = Qualification)) +
+  geom_bar(width = 0.4)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggplot(filtered_df2, aes(x = Team, fill = Qualification)) +
+  geom_bar(width = 0.4)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggplot(filtered_df3, aes(x = Team, fill = Qualification)) +
+  geom_bar(width = 0.4)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggplot(filtered_df4, aes(x = Team, fill = Qualification)) +
+  geom_bar(width = 0.4)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggplot(filtered_df5, aes(x = Team, fill = Qualification)) +
+  geom_bar(width = 0.4)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#This is a box plot for the original data frame
+ggplot(df, aes(x = Team, fill = Qualification)) +
+  geom_bar(width = 0.4)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+``` 
+All these box plots show us that there are certain teams that qualify to the champions league almost every year while there are teams that have never made it to the champions league competition. Same for relegation where there are teams that have never been relegated while others are in and out of relegation. 
+
+
+
+```{r, fig.width=20, fig.height=7}
+ggplot(data = arsenal_df) +
+  geom_point(mapping = aes(x = Average_Age, y = W))+
+  #geom_smooth()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Create the time series plot
+custom_colors <- c("red", "blue","green","yellow","purple","black","white","orange","pink","brown")
+
+#each of these data frames contains data on 10 teams and can all be plotted individually for better visualization or they can all be plotted next to each other.
+
+
+
+plot1 <- ggplot(filtered_df1, aes(x = Season_End_Year, y = W, color = Team)) +
+  geom_line() +
+ # scale_color_manual(values = custom_colors) +
+  #labs(title = "Yearly Time Series Plot", x = "Year", y = "Wins")
+  labs(title = "1")
+
+plot2 <- ggplot(filtered_df2, aes(x = Season_End_Year, y = W, color = Team)) +
+  geom_line() +
+ # scale_color_manual(values = custom_colors) +
+  #labs(title = "Yearly Time Series Plot", x = "Year", y = "Wins")
+  labs(title = "2")
+
+plot3 <- ggplot(filtered_df3, aes(x = Season_End_Year, y = W, color = Team)) +
+  geom_line() +
+ # scale_color_manual(values = custom_colors) +
+  #labs(title = "Yearly Time Series Plot", x = "Year", y = "Wins")
+  labs(title = "3")
+
+plot4 <- ggplot(filtered_df4, aes(x = Season_End_Year, y = W, color = Team)) +
+  geom_line() +
+ # scale_color_manual(values = custom_colors) +
+  #labs(title = "Yearly Time Series Plot", x = "Year", y = "Wins")
+  labs(title = "4")
+
+plot5 <- ggplot(filtered_df5, aes(x = Season_End_Year, y = W, color = Team)) +
+  geom_line() +
+ # scale_color_manual(values = custom_colors) +
+  #labs(title = "Yearly Time Series Plot", x = "Year", y = "Wins")
+  labs(title = "5")
+
+
+# Arrange plots side by side
+side_by_side <- grid.arrange(plot1, plot2,plot3,plot4,plot5, ncol = 5)
+
+
+```
+This time series vs the number of wins of each time does not show a clear trend. However on average all teams go through ups and downs depending on factors within each single season. Teams can show consistent form where they stay in a certain range of wins for a long period of time. Teams can show a sudden improvement for a short period of time and then go back to their regular form. Teams can show a sudden improvement and then continue their form from a higher level than before. therefore it really depends on each team. 
+
+
+```{r}
+cor.test(df$GA,df$Average_Age)
+cor.test(df$GA,df$GF)
+cor.test(df$GA,df$Attendance)
+cor.test(df$GF,df$Average_Age)
+cor.test(df$GF,df$Attendance)
+
+```
+
+Interpretation:
+
+-GA and Average_Age:
+    the results show that there is statistically significant correlation between the two factors. The positive value of the correlation coefficient suggests a positive relationship between the two variables. This can be attributed clearly to the fact that young and inexperienced teams tend to concede more goals.
+  
+-GF and Average_Age:
+    GF and Avg_Age showed a correlation coefficient of -0.1693048 which shows that there is a low negative correlation between the two, indicating that there is little to no correlation between the two. It may be because ultimately the goals a team scores depends on the teams form and how they play and not so much related to the average age.
+    
+  
+-GA and Attendance:
+    The test between GA and Attendance showed a correlation coefficient of -0.3971379. The correlation number is a negative one indicating that the two attributes are negatively correlated and behave opposite to each other.
+    
+-GF and Attendance:
+    The results for these attributes are quite interesting. A very high T-value of 12.044 was generated which shows that there is a strong relationship, the correlation coefficient generated was also high being 0.43. The results show that there is a significant correlation between goals scored and attendance. This is attributed to the fact that having more fans in attendance for a team will help the team in scoring more goals than if the attendance was low.
+    
+-GA and GF:
+    The correlation test results between GA and GF revealed a t-value of -17.955 and correlation coefficient of -0.5836408. These results indicate that there is negative correlation between the two attributes. The t-value shows that there is no statistical significance in relating these two attributes to each other or having them as related as part of interaction factors because they work in the opposite way. This may signify that the GF of a team will have to do with the performance of the attacking players of that team while the GA will have to do with the performance of the defending players of that team.
+
+```{r}
+pairs(~ GF + Attendance,df)
+```
+There is a very similar trend between the data points of these two variables. There relationship could be considered strong especially looking at the first half of the graph where the points are tightly clustered rather than scattered.
+
+```{r}
+pairs(~ GF +GA  + Attendance ,df)
+```
+
+
+Regression Models:
+```{r}
+
+slr_model1 <- lm(W ~ GF, data = df)
+summary(slr_model)
+confint(slr_model)
+
+```
+-SLR model predicting Team Wins as a function of GF.
+-The coefficient of GF is positive meaning there is a positive correlation with the response. The higher the GF implies a higher number of wins.
+-The Standard Error is low and that is also seen in the narrow window of the confidence interval implying that the coefficient of GF generated by this model is close to the true coefficient.
+-The p-value is very small and well bellow the threshold indicating that there is an association between the wins and the GF of a team. This rejects the hypothesis H0 that there is no relation.
+-The t-value is very high which signifies that the independent variable GF is of statistical significance and any change in GF is followed with a significant change in the wins.
+-R-squared value is close to 1 which could indicate that GF is very important and provides good accuracy for predicting the wins. Also it shows that the relationship between GF and wins is somewhat close to being linear.
+-The value of F-statistic is extremely high which signifies that there definitely is a relationship between GF and the wins.
+-The RSE value is 2.651 meaning that any value of wins would still be off by about 2.651.
+-
+
+
+```{r}
+
+slr_model <- lm(W ~ GA, data = df)
+summary(slr_model)
+confint(slr_model)
+
+```
+SLR model predicting Team Wins as a function of GA.
+-The coefficient of GA is negative meaning there is a negative correlation with the response. The higher the GA implies a lower number of wins.
+-The standard error is still considered low, and the window for the confidence interval is still somewhat narrow meaning our estimated coefficient is not too far from the true value.
+-The p-value is very small and well bellow the threshold indicating that there is an association between the wins and the GA of a team. This rejects the hypothesis H0 that there is no relation.
+- There is a contradiction with the low t-value that shows that GA is not of statistical importance however this can not be concluded because GA might need other variables to have statistical significance. GA alone might be considered as non-significant to predict number of wins but it is important to explore joining it wither variables.
+-p-value is lower than the threshold showing that is variable definitely has an effect on the number of wins.
+-R-squared of 0.6079 is not too far from 1 however there is inaccuracy in the model and with the t-value the suggestion is more variables need to be included with GA.
+
+-RSE values shows that the model will always predict the wins to be 3.575 away from the true value.
+- F-statistic is much greater than 1 further proving the existence of a relation with the wins.
+```{r}
+
+slr_model <- lm(W ~ Average_Age, data = df)
+summary(slr_model)
+confint(slr_model)
+
+```
+SLR model predicting Team Wins as a function of Average Age.
+-The coefficient of Average_Age is negative meaning there is a negative correlation with the response. The Lower the Average_Age implies a higher the number of wins. This suggests that having, on average, younger players in the squad rather than older will provide more wins. Older players might be more fatigued and cannot keep up with the stamina, endurance, and athleticism of younger players.
+-t-value does show that this variable is of some importance but its value suggests that it is not one of the major factors and there are many other variables that come to play.
+-p-value is bellow threshold and ensure a relation with the response.
+-The RSE is high and that is translated in the wide range of the confidence interval.The model did not accurately predict the coefficient of this variable.
+-Along with the value of R-squared which is far from one, it can be concluded that more variables are needed, the relationship is probably not very linear, or there is the possibility of needing interactions with different variables.
+-The value of F-statistic is considerably close to 1, but taking into consideration that the sample size is not small, this value can still reject the hypothesis that there is no relation with the response.
+
+```{r}
+
+slr_model <- lm(W ~ Attendance, data = df)
+summary(slr_model)
+confint(slr_model)
+
+```
+-Attendance will increase the number of wins (positive coefficient), however the coefficient value is very low suggesting that the contribution of this variable is not very significant.
+-t-value shows that Attendance is statistically significant.
+-Standard error is low meaning that the value of coefficient, on average, is close to true value. the data points could also be well spread out providing the low SE value.
+-p-value below threshold
+-R-squared is far from 1, reasons are mentioned above. 
+-F-statistic far from one indicating the existence of a relationship with the response.
+
+
+
+```{r}
+# Creating dummy variables, if the value is a Yes
+
+slr_model <- lm(W ~ Change_of_Manager, data = df)
+summary(slr_model)
+confint(slr_model)
+
+```
+p-value is bellow threshold showing a relation with the response.
+The model itself is not very accurate due to the low R-squared value and high RSS.The interval of confidence range is not very tight due to the SE of the coefficient. t-value is high enough to show that the variable has statistical significance.
+
+
+```{r}
+mlr_model <- lm(W ~ GF + GA, data = df)
+summary(mlr_model)
+confint(mlr_model)
+
+```
+A Multiple LR model including GA and GF.
+Since there is no correlation between the variables then no interaction factor is needed and since they both contribute to the response it is significant to have them together.
+
+Both coefficients have acceptable p-values that are bellow the threshold.
+GF coefficient decreased from 0.336898 to 0.248416 after adding the effect of GA. 
+The standard errors (SE) of the coefficients decreased from their respective single LR models making the coefficients closer to their true values.
+RSE is now smaller predicting a response that is closer to the actual response.
+The value of R-squared is 0.8891 significantly close to 1 showing that having both those variables increases the accuracy of the linear model where each output is closer to its true value than having each variable alone. 
+F-statistic is also very far from 1 pointing out that these two variables together are statistically significant for predicting the wins.
+
+
+
+```{r}
+mlr_model <- lm(W ~ GF + GA + Average_Age, data = df)
+summary(mlr_model)
+confint(mlr_model)
+
+```
+Adding the Average_age variable did not increase the accuracy of the model by any significant amount. Even when we considered this variable in a single linear model it did not prove to have a very strong relationship with the output suggesting that it either needed more important attributes or even a non-linear model. This was further supported here and thus dropping out average age in the context of a linear model might be more accurate.
+
+```{r}
+mlr_model <- lm(W ~ GF + GA + Attendance, data = df)
+summary(mlr_model)
+confint(mlr_model)
+
+```
+A Multiple LR model including GA and GF was done above but here Attendance was added.
+There is a very significant idea to point out:
+
+The p-value of Attendance from the SLR was 2.2e-16 which was bellow the threshold showing significance to the response, while its value when including it in the MLR with GF and GA is 0.956 which is high and shows insignificance to the response. This contradiction is attributed to the existence of significant correlation between Attendance and one of the variables in this model GF. Thus it could be that Attendance is masking its effect from its correlation with GF.
+
+
+```{r}
+mlr_model <- lm(W ~ GF + GA + Attendance + Change_of_Manager, data = df)
+summary(mlr_model)
+confint(mlr_model)
+# Calculating the VIF values to detect any multicollinearity
+vif_values <- vif(mlr_model)
+vif_values
+
+```
+Adding the Change_of_Managers variable did not significantly improve the model however the R-squared value did slightly increase.
+The p-value of 0.000693 increased from when the variable was considered alone in a single LR model. This can suggest that the variable still contributes to explaining the variation in the response, as its p-value remains below the significance threshold. However, its unique contribution may be reduced when other predictors are included in the model.
+
+The VIF vector showed no multicollinearity between these variables.
+
+```{r}
+
+residuals <- residuals(mlr_model)
+# Creating a scatter-plot of residuals against the fitted (predicted) values
+plot(fitted(mlr_model), residuals, xlab = "Observations", ylab = "Residuals", main = "Correlation of Error Terms")
+abline(h = 0.5, col = "red")
+
+```
+The correlation of error graph showed no evident pattern where the calculated residuals where clearly scattered following no obvious path. This is good because it ensures that our errors are not correlated even starting from data collection.
+
+
+
+
+```{r}
+
+mlr_model <- lm(W ~ GF*Attendance + GA, data = df)
+summary(mlr_model)
+confint(mlr_model)
+
+```
+We chose to include an interaction factor between the GF and Attendance variable due to the existence of a correlation between these variables. The above threshold p-value of the interaction factor suggests that including the interaction factor in the model does not provide any statistical significant portion as to the variation in the response any more than these two variables explain when they are considered alone. However, the individual variables still contribute significantly to explaining the variation in the response, as indicated by their correlation and low p-values in the other models. Correlation does not mean interaction. 
+
+```{r}
+
+qlr_model1 <- lm(W ~ GF + I(GF^2), data = df)
+summary(qlr_model)
+confint(qlr_model)
+
+```
+This Quadratic regression model of the GF variable gave an above threshold p-value for the squared GF coefficient suggesting that the relationship between GF and the response is not quadratic and leaning much more towards being a linear relationship.
+
+```{r}
+
+qlr_model2 <- lm(W ~ Attendance + I(Attendance^2), data = df)
+summary(qlr_model)
+confint(qlr_model)
+
+```
+
+Quadratic regression model for Attendance gave a low R-squared value meaning the model is not very accurate however the significant thing to note here is the bellow threshold p-value of Attendance coefficient while the Attendance squared coefficient showed a bellow threshold p-value signaling that Attendance does not have a linear relationship with the response and maybe more of a non-linear relationship. 
+
+
+```{r}
+
+#For quadratic
+residuals <- residuals(qlr_model1)
+
+plot(fitted(qlr_model1), residuals, xlab = "Observations", ylab = "Residuals", main = "Correlation of Error Terms - Quad")
+abline(h = 0.5, col = "red")
+abline(lm(resid(qlr_model1) ~ df$GF), col = "blue")
+
+#for linear
+residuals <- residuals(slr_model1)
+plot(fitted(slr_model1), residuals, xlab = "Observations", ylab = "Residuals", main = "Correlation of Error Terms - Linear")
+abline(h = 0.5, col = "red")
+abline(lm(resid(slr_model1) ~ df$GF), col = "blue")
+
+
+```
+Both show that the data have no correlated error for both types of models.
+

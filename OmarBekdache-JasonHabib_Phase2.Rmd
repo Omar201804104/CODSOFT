@@ -1,0 +1,263 @@
+---
+title: "OmarBekdache-JasonHabib_Phase2"
+author: "Omar Bekdache and Jason Habib"
+date: "2023-11-08"
+output: word_document
+---
+PROMPT?INTRODUCTION?VARIABLE MEANING
+```{r, fig.width=20, fig.height=5}
+library(ggplot2)
+library(leaps)
+library(MASS) 
+
+setwd("C:/Users/Omar/Desktop/Fall 2023/Intro to Data Science")
+df <- read.csv("Churn_Modelling.csv")
+```
+
+VISUALIZE
+
+```{r,echo=TRUE, results='asis'}
+#1 Check the levels of the factor variable
+levels(df$Customer_Status)
+class(df$Customer_Status)
+df$Customer_Status <- as.factor(df$Customer_Status) #Customer_Status in now a factor
+unique(df$Customer_Status)
+
+#2 Check for missing values
+sum(is.na(df$Customer_Status)) #returned 0 therefore I have no missing values in my column
+
+# Assuming you want to encode "Churned" as 1 and "Stayed" as 0
+df$Customer_Status <- as.numeric(factor(df$Customer_Status, levels = c("Stayed", "Churned"), labels = c(0, 1)))
+
+#Function to calculate the performance metrics of LDA
+measure = function(confmatrix){
+  sensitivity = confmatrix[2,2] / (confmatrix[1,2] + confmatrix[2,2])
+  specificity = confmatrix[1,1] / (confmatrix[1,1] + confmatrix[2,1])
+  accuracy = sum(diag(confmatrix)) / sum(confmatrix)
+  return (c(se = sensitivity, sp = specificity, acc = accuracy))
+}
+
+data <- data %>%
+  mutate(
+    Internet_Type_Fiber = ifelse(Internet_Type == "fiber", 1, 0),
+    Internet_Type_DSL = ifelse(Internet_Type == "DSL", 1, 0),
+    Internet_Type_Cable = ifelse(Internet_Type == "cable", 1, 0),
+    Internet_Type_NoInternet = ifelse(Internet_Type == "N/A", 1, 0)
+  )
+
+```
+
+
+```{r}
+
+log.reg.model <- glm(Customer_Status~ ., data = df, family = binomial())
+
+summary(log.reg.model)
+coef(log.reg.model)
+
+contrasts(Streaming_Movie)
+
+```
+
+
+```{r}
+#Best Subset Selection
+regfit.full <- regsubsets(Customer_Status ~ ., data = df, nvmax = ncol(df)-1)
+
+#Forward Selection
+regfit.fwd <- regsubsets(Customer_Status~., data = df, nvmax= 21 , method = "forward")
+
+#Backward Selection
+regfit.bwd <- regsubsets(Customer_Status~., data = df, nvmax= 21 , method = "backward")
+```
+```{r}
+coef(regfit.full, 14)
+coef(regfit.fwd, 14)
+coef(regfit.bwd, 14)
+```
+The best 14-variable model is different for each subset selection algorithm used. It is noticed that the following variables are in the three selection methods: Age, Married, Num_Dep, Num_Referral, Tenure, Avg_GB_D, Total_Revenue, Multiple_LinesYes, Streaming_TVYes. This gives us more insight on what predictors are mostly related t our outcome. Unlimited_DataNo was present in the first two selection methods but did not appear in the backward selection. This variable might be effecting the outcome but there are others that might be more important. 
+
+```{r}
+#Using Best Subset Selection
+
+reg.summary.full = summary(regfit.full)
+
+par (mfrow = c(2 , 2) )
+which.min(reg.summary.full$rss)
+which.min(reg.summary.full$bic)
+which.max(reg.summary.full$adjr2)
+which.min(reg.summary.full$cp)
+
+
+plot ( reg.summary.full$rss, xlab = " Number of Variables ", ylab = " RSS ", type = "l")
+points(22, reg.summary.full$rss[22], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.full$adjr2 , xlab = " Number of Variables ",ylab = " Adjusted RSq ", type = "l")
+points(20, reg.summary.full$adjr2[20], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.full$bic , xlab = " Number of Variables ",ylab = "BIC", type = "l")
+points(14, reg.summary.full$bic[14], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.full$cp , xlab = " Number of Variables ",ylab = " Cp ", type = "l")
+points(19, reg.summary.full$cp[19], col = "red", cex = 2, pch = 20)
+
+```
+
+```{r}
+#Using Forward Selection
+reg.summary.fwd = summary(regfit.fwd)
+
+
+par (mfrow = c(2 , 2) )
+which.min(reg.summary.fwd$rss)
+which.max(reg.summary.fwd$adjr2)
+which.min(reg.summary.fwd$bic)
+which.min(reg.summary.fwd$cp)
+
+
+plot ( reg.summary.fwd$rss, xlab = " Number of Variables ", ylab = " RSS ", type = "l")
+points(22, reg.summary.fwd$rss[22], col = "blue", cex = 2, pch = 20)
+
+plot ( reg.summary.fwd$adjr2 , xlab = " Number of Variables ",ylab = " Adjusted RSq ", type = "l")
+points(20, reg.summary.fwd$adjr2[20], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.fwd$bic , xlab = " Number of Variables ",ylab = "BIC", type = "l")
+points(14, reg.summary.fwd$bic[14], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.fwd$cp , xlab = " Number of Variables ",ylab = " Cp ", type = "l")
+points(17, reg.summary.fwd$cp[17], col = "red", cex = 2, pch = 20)
+
+```
+
+
+```{r}
+#Using Backward Selection
+reg.summary.bwd = summary(regfit.bwd)
+
+
+par (mfrow = c(2 , 2) )
+which.min(reg.summary.bwd$rss)
+which.max(reg.summary.bwd$adjr2)
+which.min(reg.summary.bwd$bic)
+which.min(reg.summary.bwd$cp)
+
+
+plot ( reg.summary.bwd$rss, xlab = " Number of Variables ", ylab = " RSS ", type = "l")
+points(22, reg.summary.bwd$rss[22], col = "blue", cex = 2, pch = 20)
+
+plot ( reg.summary.bwd$adjr2 , xlab = " Number of Variables ",ylab = " Adjusted RSq ", type = "l")
+points(20, reg.summary.bwd$adjr2[20], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.bwd$bic , xlab = " Number of Variables ",ylab = "BIC", type = "l")
+points(14, reg.summary.bwd$bic[14], col = "red", cex = 2, pch = 20)
+
+plot ( reg.summary.bwd$cp , xlab = " Number of Variables ",ylab = " Cp ", type = "l")
+points(19, reg.summary.bwd$cp[19], col = "red", cex = 2, pch = 20)
+
+```
+
+
+```{r}
+
+#Best Subset Selection by Validation-Set Approach and Cross-Validation
+
+
+set.seed(1)
+train <- sample(c(TRUE,FALSE),nrow(df),replace = TRUE) #splitting our data into two parts, testing data and training data. 
+test <- (!train)
+
+regfit.best <- regsubsets(Customer_Status~.,data = df[train, ],nvmax = 21) 
+
+test.mat <- model.matrix(Customer_Status~.,data = df[test, ])
+
+val.errors <- rep(NA,22) #vector of size p to store error of each subset
+
+for(i in 1:22){ #looping to get coefficients of each subset to compute the error and store in val.errors
+  coeficient <- coef(regfit.best, id =i) #extracting the coefficients of each subset 
+  pred <- test.mat[,names(coeficient)] %*% coeficient #performing matrix multiplication on the coefficients to get the predicted value of our outcome
+  
+  val.errors[i] <- mean((df$Customer_Status[test]-pred)^2) #computing the mean squared error
+}
+
+which.min(val.errors)
+summary(regfit.best)
+coef(regfit.best,2)
+```
+Using the validation-set approach we split our data into Test data and Train data. We used the Training data in order to choose the best subset of predictors at each stage (number of predictors). Then we computed the coefficients of the predictors of all p models using the Testing data, this will provide more accurate estimates of the coefficients which will subsequently provide a better estimate for the validation error of each subset. Using the coefficients and the model.matrix function we predicted values of our outcome for each subset. Looking at the lowest validation error of all subsets we notice that it was for subset 13. This means that the 13 chosen predictors when comparing models with 13 predictors are most suitable to use. Those 13 predictors are obtained by looking at the summary of regfit.best which are: Age, MarriedYes, Num_Dep, Num_Referral, Tenure, Multiple_LineYes, Internet_TypeFiber, 
+
+
+```{r}
+
+#Creating different splits using the cross-validation re-sampling technique 
+
+df <- df %>% mutate(id = row_number())
+num_splits <- 5
+split_list <- vector("list", length = num_splits) # This is a list that stores the splits
+for (i in 1:num_splits) {               # This loop creates a test train split and places each one in the split_list vector
+  tr <- df %>% slice_sample(prop = 0.65)
+  te <- anti_join(df, tr, by = 'id')
+  tr <- tr %>% select(-id)
+  te <- te %>% select(-id)
+  split_list[[i]] <- list(train = tr, test = te) #this line stores each train test split as a list inside vector split_list
+ 
+   lda.mod <- lda(Customer_Status ~ .,data = split_list[[i]]$train) #LDA on training data
+   
+   
+  lda.mod.pred <- predict(lda.mod, newdata = split_list[[i]]$test) #LDA on testing data
+  
+  
+  
+  conf <- table(lda.mod.pred$class, split_list[[i]]$test$Customer_Status) #Generating a confusion matrix
+  cat("Confusion Matrix for Split", i, ":\n")
+  # Using the measure function
+  perf <- measure(conf)
+  cat("Sensitivity:", perf[1], "\n")
+  cat("Specificity:", perf[2], "\n")
+  cat("Accuracy:", perf[3], "\n\n")
+}
+
+
+```
+
+
+
+```{r}
+#Varying the threshold value for a SINGLE LDA model to study its effect on the error rate
+
+threshold_values <- seq(0.1, 0.9, by = 0.1) # This is a list that stores the threshold values
+error_rates <- numeric(length(threshold_values))# This is a list that stores the error rates
+
+tr <- df %>% slice_sample(prop = 0.70)
+te <- anti_join(df, tr, by = 'id')
+tr <- tr %>% select(-id)
+te <- te %>% select(-id)
+lda.mod <- lda(Customer_Status ~ .,data = tr) #LDA on training data
+lda.mod.pred <- predict(lda.mod, newdata =te) #LDA on testing data
+#to loop over all the threshold values to obtain different error rates
+for(i in seq_along(threshold_values)) {
+  
+  threshold_value <- threshold_values[i]
+  
+  predicted_class <- ifelse(lda.mod.pred$posterior[, "Churned"] > threshold_value , "Churned", "Stayed")
+
+  
+  conf_matrix <- table(predicted_class, te$Customer_Status)
+  
+  error_rates[i] <- 1 - sum(diag(conf_matrix)) / sum(conf_matrix)
+}
+
+#Plotting error rate vs threshold value
+plot(threshold_values, error_rates, type = "b", col = "blue",
+     xlab = "Threshold Values", ylab = "Error Rate",
+     main = "Error Rate vs. Threshold")
+abline(h = min(error_rates), col = "red", lty = 2) # adds a horizontal line at the minimum error rate
+
+```
+
+
+
+
+
+
+
+
